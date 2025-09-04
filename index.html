@@ -13,7 +13,21 @@
         .value { font-size: 2.5em; font-weight: bold; color: #4dd0e1; margin: 10px 0; min-height: 48px; }
         .label { font-size: 1em; color: #b0b0b0; }
         .unit { font-size: 1.2em; color: #4dd0e1; }
-        .chart-container { background-color: #2c2c2c; padding: 20px; border-radius: 12px; margin-top: 30px; max-width: 900px; width: 100%; }
+        /* استایل برای نگهدارنده نمودارها */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* نمایش دو نمودار در هر ردیف */
+            gap: 25px;
+            margin-top: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        .chart-container { background-color: #2c2c2c; padding: 20px; border-radius: 12px; }
+        /* تنظیمات برای نمایش تک ستونه در موبایل */
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .charts-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -26,8 +40,19 @@
         <div class="card"><div class="label">فشار هوا</div><div class="value"><span id="pressure">--</span><span class="unit"> hPa</span></div></div>
     </div>
 
-    <div class="chart-container">
-        <canvas id="sensorChart"></canvas>
+    <div class="charts-grid">
+        <div class="chart-container">
+            <canvas id="dhtTempChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="humidityChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="bmpTempChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="pressureChart"></canvas>
+        </div>
     </div>
 
     <script>
@@ -35,26 +60,29 @@
         const LATEST_DATA_URL = `${API_BASE_URL}/get_data`;
         const HISTORY_URL = `${API_BASE_URL}/history`;
 
-        // --- تنظیمات اولیه نمودار ---
-        const ctx = document.getElementById('sensorChart').getContext('2d');
-        const sensorChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [], // زمان‌ها در اینجا قرار می‌گیرند
-                datasets: [
-                    { label: 'دمای DHT11', borderColor: '#ff6384', data: [], yAxisID: 'y-temp' },
-                    { label: 'رطوبت', borderColor: '#36a2eb', data: [], yAxisID: 'y-humidity' },
-                    { label: 'فشار', borderColor: '#cc65fe', data: [], yAxisID: 'y-pressure' }
-                ]
-            },
-            options: {
-                scales: {
-                    'y-temp': { type: 'linear', position: 'left', title: { display: true, text: 'دما (C)' } },
-                    'y-humidity': { type: 'linear', position: 'right', title: { display: true, text: 'رطوبت (%)' }, grid: { drawOnChartArea: false } },
-                    'y-pressure': { type: 'linear', position: 'right', title: { display: true, text: 'فشار (hPa)' }, grid: { drawOnChartArea: false }, display: false } // محور فشار مخفی است
-                }
-            }
-        });
+        // تابع کمکی برای ساخت یک نمودار جدید
+        function createChart(canvasId, label, color) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        borderColor: color,
+                        data: [],
+                        tension: 0.1
+                    }]
+                },
+                options: { legend: { labels: { fontColor: "white" } } }
+            });
+        }
+
+        // ساخت ۴ نمودار مجزا
+        const dhtTempChart = createChart('dhtTempChart', 'دمای DHT11 (°C)', '#ff6384');
+        const humidityChart = createChart('humidityChart', 'رطوبت (%)', '#36a2eb');
+        const bmpTempChart = createChart('bmpTempChart', 'دمای BMP180 (°C)', '#ffce56');
+        const pressureChart = createChart('pressureChart', 'فشار (hPa)', '#cc65fe');
 
         function updateElement(id, value) {
             const element = document.getElementById(id);
@@ -71,22 +99,33 @@
                 updateElement("bmp-temp", latestData.bmp_temp);
                 updateElement("pressure", latestData.pressure);
 
-                // دریافت داده‌های تاریخی برای نمودار
+                // دریافت داده‌های تاریخی برای نمودارها
                 const historyResponse = await fetch(HISTORY_URL);
                 const historyData = await historyResponse.json();
                 
-                // آماده‌سازی داده‌ها برای نمودار
+                // آماده‌سازی داده‌ها
                 const labels = historyData.map(d => new Date(d.timestamp).toLocaleTimeString('fa-IR'));
                 const dhtTemps = historyData.map(d => d.dht_temp);
                 const humidities = historyData.map(d => d.humidity);
+                const bmpTemps = historyData.map(d => d.bmp_temp);
                 const pressures = historyData.map(d => d.pressure);
 
-                // به‌روزرسانی نمودار
-                sensorChart.data.labels = labels;
-                sensorChart.data.datasets[0].data = dhtTemps;
-                sensorChart.data.datasets[1].data = humidities;
-                sensorChart.data.datasets[2].data = pressures; // داده‌های فشار در دیتاست باقی می‌مانند
-                sensorChart.update();
+                // به‌روزرسانی هر ۴ نمودار
+                dhtTempChart.data.labels = labels;
+                dhtTempChart.data.datasets[0].data = dhtTemps;
+                dhtTempChart.update();
+
+                humidityChart.data.labels = labels;
+                humidityChart.data.datasets[0].data = humidities;
+                humidityChart.update();
+
+                bmpTempChart.data.labels = labels;
+                bmpTempChart.data.datasets[0].data = bmpTemps;
+                bmpTempChart.update();
+                
+                pressureChart.data.labels = labels;
+                pressureChart.data.datasets[0].data = pressures;
+                pressureChart.update();
 
             } catch (error) {
                 console.error("Could not fetch data:", error);
@@ -94,7 +133,7 @@
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 60000); // آپدیت هر دقیقه
+        setInterval(updateDashboard, 60000);
     </script>
 </body>
 </html>
