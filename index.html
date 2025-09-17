@@ -3,137 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ایستگاه هواشناسی من</title>
+    <title>مانیتورینگ محیطی - مشاهده از راه دور</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; flex-direction: column; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 20px; box-sizing: border-box; }
-        h1 { color: #ffffff; margin-bottom: 40px; }
-        .container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; max-width: 600px; width: 100%; }
-        .card { background-color: #2c2c2c; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
-        .value { font-size: 2.5em; font-weight: bold; color: #4dd0e1; margin: 10px 0; min-height: 48px; }
-        .label { font-size: 1em; color: #b0b0b0; }
-        .unit { font-size: 1.2em; color: #4dd0e1; }
-        /* استایل برای نگهدارنده نمودارها */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr); /* نمایش دو نمودار در هر ردیف */
-            gap: 25px;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .sensor-data {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .sensor-card {
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            width: 200px;
+            text-align: center;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        .value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .unit {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        .timestamp {
+            text-align: center;
+            margin-top: 20px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .final-temp {
+            background-color: #3498db;
+            color: white;
+        }
+        .lux {
+            background-color: #f39c12;
+            color: white;
+        }
+        .irradiance {
+            background-color: #9b59b6;
+            color: white;
+        }
+        .chart-container {
             margin-top: 30px;
-            max-width: 1200px;
+            position: relative;
+            height: 300px;
             width: 100%;
         }
-        .chart-container { background-color: #2c2c2c; padding: 20px; border-radius: 12px; }
-        /* تنظیمات برای نمایش تک ستونه در موبایل */
-        @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; }
-            .charts-grid { grid-template-columns: 1fr; }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        .chart-column {
+            flex: 1;
+            min-width: 300px;
+            margin: 10px;
+        }
+        .info-box {
+            background-color: #e7f5ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            border-left: 5px solid #3498db;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
         }
     </style>
 </head>
 <body>
-
-    <h1>🚀 ایستگاه هواشناسی IoT من</h1>
     <div class="container">
-        <div class="card"><div class="label">دمای سنسور DHT11</div><div class="value"><span id="dht-temp">--</span><span class="unit"> &deg;C</span></div></div>
-        <div class="card"><div class="label">رطوبت</div><div class="value"><span id="humidity">--</span><span class="unit"> %</span></div></div>
-        <div class="card"><div class="label">دمای سنسور BMP180</div><div class="value"><span id="bmp-temp">--</span><span class="unit"> &deg;C</span></div></div>
-        <div class="card"><div class="label">فشار هوا</div><div class="value"><span id="pressure">--</span><span class="unit"> hPa</span></div></div>
-    </div>
-
-    <div class="charts-grid">
-        <div class="chart-container">
-            <canvas id="dhtTempChart"></canvas>
+        <h1>مانیتورینگ محیطی - مشاهده از راه دور</h1>
+        
+        <div class="info-box">
+            <h3>داده‌های زنده از سنسورها</h3>
+            <p>این داده‌ها از طریق PythonAnywhere دریافت می‌شوند</p>
         </div>
-        <div class="chart-container">
-            <canvas id="humidityChart"></canvas>
+        
+        <div id="loading" class="loading">
+            <h3>در حال بارگذاری داده‌ها...</h3>
         </div>
-        <div class="chart-container">
-            <canvas id="bmpTempChart"></canvas>
-        </div>
-        <div class="chart-container">
-            <canvas id="pressureChart"></canvas>
+        
+        <div id="sensor-container" style="display: none;">
+            <div class="sensor-data">
+                <div class="sensor-card final-temp">
+                    <h2>دمای نهایی</h2>
+                    <div class="value" id="final-temp">--</div>
+                    <div class="unit">درجه سانتیگراد</div>
+                </div>
+                
+                <div class="sensor-card">
+                    <h2>رطوبت</h2>
+                    <div class="value" id="humidity">--</div>
+                    <div class="unit">درصد</div>
+                </div>
+                
+                <div class="sensor-card">
+                    <h2>فشار</h2>
+                    <div class="value" id="pressure">--</div>
+                    <div class="unit">hPa</div>
+                </div>
+                
+                <div class="sensor-card">
+                    <h2>ارتفاع</h2>
+                    <div class="value" id="altitude">--</div>
+                    <div class="unit">متر</div>
+                </div>
+                
+                <div class="sensor-card lux">
+                    <h2>شدت نور</h2>
+                    <div class="value" id="lux">--</div>
+                    <div class="unit">لوکس</div>
+                </div>
+                
+                <div class="sensor-card irradiance">
+                    <h2>شدت تابش</h2>
+                    <div class="value" id="irradiance">--</div>
+                    <div class="unit">W/m²</div>
+                </div>
+            </div>
+            
+            <div class="timestamp" id="timestamp">آخرین بروزرسانی: --</div>
+            
+            <div class="chart-title">تاریخچه داده‌ها (آخرین ۲۰ اندازه‌گیری)</div>
+            
+            <div class="chart-row">
+                <div class="chart-column">
+                    <div class="chart-title">نمودار تغییرات دما</div>
+                    <div class="chart-container">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-column">
+                    <div class="chart-title">نمودار تغییرات رطوبت</div>
+                    <div class="chart-container">
+                        <canvas id="humidityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-row">
+                <div class="chart-column">
+                    <div class="chart-title">نمودار تغییرات فشار</div>
+                    <div class="chart-container">
+                        <canvas id="pressureChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-column">
+                    <div class="chart-title">نمودار تغییرات شدت نور</div>
+                    <div class="chart-container">
+                        <canvas id="luxChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-row">
+                <div class="chart-column">
+                    <div class="chart-title">نمودار تغییرات شدت تابش</div>
+                    <div class="chart-container">
+                        <canvas id="irradianceChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_BASE_URL = "https://maziarasmani.pythonanywhere.com";
-        const LATEST_DATA_URL = `${API_BASE_URL}/get_data`;
-        const HISTORY_URL = `${API_BASE_URL}/history`;
-
-        // تابع کمکی برای ساخت یک نمودار جدید
-        function createChart(canvasId, label, color) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            return new Chart(ctx, {
+        // آدرس API در PythonAnywhere
+        const API_URL = 'http://yourusername.pythonanywhere.com/api/data';
+        
+        let tempChart, humidityChart, pressureChart, luxChart, irradianceChart;
+        let sensorData = [];
+        
+        // ایجاد نمودارها
+        function initCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'زمان'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'مقدار'
+                        }
+                    }
+                }
+            };
+            
+            tempChart = new Chart(document.getElementById('tempChart').getContext('2d'), {
                 type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: label,
-                        borderColor: color,
-                        data: [],
-                        tension: 0.1
-                    }]
-                },
-                options: { legend: { labels: { fontColor: "white" } } }
+                data: { labels: [], datasets: [{ label: 'دما (°C)', data: [], borderColor: 'rgb(52, 152, 219)', backgroundColor: 'rgba(52, 152, 219, 0.2)', fill: true }] },
+                options: chartOptions
+            });
+            
+            humidityChart = new Chart(document.getElementById('humidityChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'رطوبت (%)', data: [], borderColor: 'rgb(46, 204, 113)', backgroundColor: 'rgba(46, 204, 113, 0.2)', fill: true }] },
+                options: chartOptions
+            });
+            
+            pressureChart = new Chart(document.getElementById('pressureChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'فشار (hPa)', data: [], borderColor: 'rgb(231, 76, 60)', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true }] },
+                options: chartOptions
+            });
+            
+            luxChart = new Chart(document.getElementById('luxChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'شدت نور (lux)', data: [], borderColor: 'rgb(243, 156, 18)', backgroundColor: 'rgba(243, 156, 18, 0.2)', fill: true }] },
+                options: chartOptions
+            });
+            
+            irradianceChart = new Chart(document.getElementById('irradianceChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'شدت تابش (W/m²)', data: [], borderColor: 'rgb(155, 89, 182)', backgroundColor: 'rgba(155, 89, 182, 0.2)', fill: true }] },
+                options: chartOptions
             });
         }
-
-        // ساخت ۴ نمودار مجزا
-        const dhtTempChart = createChart('dhtTempChart', 'دمای DHT11 (°C)', '#ff6384');
-        const humidityChart = createChart('humidityChart', 'رطوبت (%)', '#36a2eb');
-        const bmpTempChart = createChart('bmpTempChart', 'دمای BMP180 (°C)', '#ffce56');
-        const pressureChart = createChart('pressureChart', 'فشار (hPa)', '#cc65fe');
-
-        function updateElement(id, value) {
-            const element = document.getElementById(id);
-            if (element && typeof value === 'number') element.textContent = value.toFixed(1);
-        }
-
-        async function updateDashboard() {
+        
+        // دریافت داده از API
+        async function fetchData() {
             try {
-                // دریافت آخرین داده برای کارت‌ها
-                const latestResponse = await fetch(LATEST_DATA_URL);
-                const latestData = await latestResponse.json();
-                updateElement("dht-temp", latestData.dht_temp);
-                updateElement("humidity", latestData.humidity);
-                updateElement("bmp-temp", latestData.bmp_temp);
-                updateElement("pressure", latestData.pressure);
-
-                // دریافت داده‌های تاریخی برای نمودارها
-                const historyResponse = await fetch(HISTORY_URL);
-                const historyData = await historyResponse.json();
+                const response = await fetch(API_URL);
+                const data = await response.json();
                 
-                // آماده‌سازی داده‌ها
-                const labels = historyData.map(d => new Date(d.timestamp).toLocaleTimeString('fa-IR'));
-                const dhtTemps = historyData.map(d => d.dht_temp);
-                const humidities = historyData.map(d => d.humidity);
-                const bmpTemps = historyData.map(d => d.bmp_temp);
-                const pressures = historyData.map(d => d.pressure);
-
-                // به‌روزرسانی هر ۴ نمودار
-                dhtTempChart.data.labels = labels;
-                dhtTempChart.data.datasets[0].data = dhtTemps;
-                dhtTempChart.update();
-
-                humidityChart.data.labels = labels;
-                humidityChart.data.datasets[0].data = humidities;
-                humidityChart.update();
-
-                bmpTempChart.data.labels = labels;
-                bmpTempChart.data.datasets[0].data = bmpTemps;
-                bmpTempChart.update();
-                
-                pressureChart.data.labels = labels;
-                pressureChart.data.datasets[0].data = pressures;
-                pressureChart.update();
-
+                if (data && data.sensor_data) {
+                    sensorData = data.sensor_data;
+                    updateUI();
+                }
             } catch (error) {
-                console.error("Could not fetch data:", error);
+                console.error('Error fetching data:', error);
             }
         }
-
-        updateDashboard();
-        setInterval(updateDashboard, 60000);
+        
+        // به روزرسانی UI با داده‌های جدید
+        function updateUI() {
+            if (sensorData.length > 0) {
+                // مخفی کردن loading و نمایش داده‌ها
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('sensor-container').style.display = 'block';
+                
+                const latestData = sensorData[sensorData.length - 1];
+                
+                // به روزرسانی مقادیر
+                document.getElementById('final-temp').textContent = latestData.final_temperature.toFixed(1);
+                document.getElementById('humidity').textContent = latestData.humidity.toFixed(1);
+                document.getElementById('pressure').textContent = latestData.pressure.toFixed(1);
+                document.getElementById('altitude').textContent = latestData.altitude.toFixed(1);
+                document.getElementById('lux').textContent = latestData.lux.toFixed(1);
+                document.getElementById('irradiance').textContent = latestData.irradiance.toFixed(3);
+                
+                document.getElementById('timestamp').textContent = 'آخرین بروزرسانی: ' + latestData.timestamp;
+                
+                // به روزرسانی نمودارها (آخرین ۲۰ داده)
+                const chartData = sensorData.slice(-20);
+                const labels = chartData.map(data => data.timestamp);
+                
+                tempChart.data.labels = labels;
+                tempChart.data.datasets[0].data = chartData.map(data => data.final_temperature);
+                tempChart.update();
+                
+                humidityChart.data.labels = labels;
+                humidityChart.data.datasets[0].data = chartData.map(data => data.humidity);
+                humidityChart.update();
+                
+                pressureChart.data.labels = labels;
+                pressureChart.data.datasets[0].data = chartData.map(data => data.pressure);
+                pressureChart.update();
+                
+                luxChart.data.labels = labels;
+                luxChart.data.datasets[0].data = chartData.map(data => data.lux);
+                luxChart.update();
+                
+                irradianceChart.data.labels = labels;
+                irradianceChart.data.datasets[0].data = chartData.map(data => data.irradiance);
+                irradianceChart.update();
+            }
+        }
+        
+        // راه‌اندازی اولیه
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            fetchData();
+            
+            // بروزرسانی خودکار هر 30 ثانیه
+            setInterval(fetchData, 30000);
+        });
     </script>
 </body>
 </html>
